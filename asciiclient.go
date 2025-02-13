@@ -142,12 +142,12 @@ func (mb *asciiPackager) Decode(adu []byte) (pdu *ProtocolDataUnit, err error) {
 	if _, err = hex.Decode(pdu.Data, data); err != nil {
 		return
 	}
+	// LRC
+	lrcVal, err := readHex(adu[dataEnd:])
+	if err != nil {
+		return
+	}
 	if !mb.LrcUncheck {
-		// LRC
-		lrcVal, err := readHex(adu[dataEnd:])
-		if err != nil {
-			return
-		}
 		// Calculate checksum
 		var lrc lrc
 		lrc.reset()
