@@ -44,15 +44,18 @@ func ASCIIClient(address string) Client {
 // asciiPackager implements Packager interface.
 type asciiPackager struct {
 	SlaveId byte
+	// Enable LRC uncheck
+	LrcUncheck bool
 }
 
 // Encode encodes PDU in a ASCII frame:
-//  Start           : 1 char
-//  Address         : 2 chars
-//  Function        : 2 chars
-//  Data            : 0 up to 2x252 chars
-//  LRC             : 2 chars
-//  End             : 2 chars
+//
+//	Start           : 1 char
+//	Address         : 2 chars
+//	Function        : 2 chars
+//	Data            : 0 up to 2x252 chars
+//	LRC             : 2 chars
+//	End             : 2 chars
 func (mb *asciiPackager) Encode(pdu *ProtocolDataUnit) (adu []byte, err error) {
 	var buf bytes.Buffer
 
@@ -139,18 +142,20 @@ func (mb *asciiPackager) Decode(adu []byte) (pdu *ProtocolDataUnit, err error) {
 	if _, err = hex.Decode(pdu.Data, data); err != nil {
 		return
 	}
-	// LRC
-	lrcVal, err := readHex(adu[dataEnd:])
-	if err != nil {
-		return
-	}
-	// Calculate checksum
-	var lrc lrc
-	lrc.reset()
-	lrc.pushByte(address).pushByte(pdu.FunctionCode).pushBytes(pdu.Data)
-	if lrcVal != lrc.value() {
-		err = fmt.Errorf("modbus: response lrc '%v' does not match expected '%v'", lrcVal, lrc.value())
-		return
+	if !mb.LrcUncheck {
+		// LRC
+		lrcVal, err := readHex(adu[dataEnd:])
+		if err != nil {
+			return
+		}
+		// Calculate checksum
+		var lrc lrc
+		lrc.reset()
+		lrc.pushByte(address).pushByte(pdu.FunctionCode).pushBytes(pdu.Data)
+		if lrcVal != lrc.value() {
+			err = fmt.Errorf("modbus: response lrc '%v' does not match expected '%v'", lrcVal, lrc.value())
+			return
+		}
 	}
 	return
 }
